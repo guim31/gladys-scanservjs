@@ -31,16 +31,23 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
-src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+index.js                          SDK wiring only (src/app.js), graceful shutdown
+src/app.js                        every SDK handler registered on the hub, before connect()
+src/hub.js                        reads scanservjs on its own timer, publishes states, fires
+                                  the scene events, runs the scans from Gladys (one at a time)
+src/scanservjs/client.js          REST client (context, files, scan, delete), errors by kind
+src/scanservjs/pages.js           page count of a PDF or a ZIP, streamed
+src/scan.js                       preset -> POST /api/v1/scan body (SANE words of each scanner)
+src/devices.js                    discovery payloads (scanners, files device) and their values
+src/scenes.js                     scene actions (manifest `scene_actions`)
+src/widgets.js                    dashboard widget (manifest `widgets`)
+src/texts.js                      every text sent to Gladys, four languages
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+src/store.js, src/problems.js     /data persistence, logs of repeated failures
+gladys-assistant-integration.json manifest: name, config_schema, triggers, actions, widget
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (same sections)
+test/                             node --test, against the SDK's fake Gladys and a fake
+                                  scanservjs (test/helpers), real answers in test/fixtures
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +77,9 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in English, French, German and Spanish: action
+  messages, manifest texts, widget, and `docs/{en,fr,de,es}.md`, kept in sync
+  (`test/i18n.test.js`).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -233,3 +241,29 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
 - Docs `en`, `fr`, `de`, `es` avec les mêmes sections.
 - Chauffe, ouverture, sécurité : ne rien rendre pilotable « comme un thermostat » ou par un assistant
   vocal quand une erreur serait dangereuse (leçon d'OctoPrint).
+
+## scanservjs (API et pièges, vérifiés sur la 3.3.0 réelle)
+
+- API REST de `app/server/express-configurer.js` (lire le code de la version visée, pas le swagger) :
+  `GET /api/v1/context` (scanners avec leurs options SANE `--mode`, `--resolution`, `--source`, et
+  `settings.pipeline.options`), `GET /api/v1/files` (plus récent d'abord, `lastModified` ISO à la
+  milliseconde), `GET|DELETE /api/v1/files/<nom>` (nom avec espaces : `encodeURIComponent`),
+  `POST /api/v1/scan` `{ params: { deviceId, resolution, mode, source }, pipeline, batch, index: 1 }`.
+  Pas de route d'état : « occupé » n'est connu que pour les scans lancés par Gladys.
+- `POST /api/v1/scan` **répond à la fin du scan** (`{ file }`) ; ses erreurs sont des **HTTP 500
+  `{ message }`** (mode ou pipeline refusé, `scanimage` en échec). `DELETE` répond 200 même quand rien
+  n'est supprimé : lire `deleted`.
+- **Deux scans simultanés se marchent dessus** (un seul dossier temporaire, vidé au début de chaque
+  scan) : un seul scan de Gladys à la fois, et un scan de l'interface web en même temps n'est pas
+  évitable.
+- `GET /api/v1/context` relance `scanimage -L` à chaque appel tant qu'aucun scanner n'est en cache
+  (`devices.json`) : lu une fois par heure, et sur « Rechercher » ou après un scan en échec.
+- Les fichiers ne disent pas quel scanner les a produits : d'où l'appareil « scanservjs » pour les
+  fichiers. Un renommage dans l'interface garde l'heure du fichier (`mv`) : la détection des nouveaux
+  fichiers se fait sur l'heure seule, pas sur le nom.
+- Le backend `test` de SANE (à décommenter dans `/etc/sane.d/dll.conf` de l'image, monté en lecture
+  seule) expose deux scanners `test:0` et `test:1`, modes `Gray|Color` (pas de Lineart), sources
+  `Flatbed|Automatic Document Feeder` (10 pages en `batch: "auto"`) et des résolutions fractionnaires
+  (1.17, 2.34…) : ne garder que les entières.
+- Les noms de pipelines contiennent des clés i18n de l'interface (`@:pipeline.high-quality`) :
+  `pipelineLabel` les rend lisibles pour les variables de scène.

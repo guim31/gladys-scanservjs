@@ -1,177 +1,1431 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "scanservjs",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Scan from Gladys with scanservjs: one tap or a scene, and an event when the file is ready.",
+    "fr": "Numérisez depuis Gladys avec scanservjs : bouton ou scène, et un événement quand le fichier arrive.",
+    "de": "Scanne aus Gladys mit scanservjs: per Knopf oder Szene, und ein Ereignis, wenn die Datei fertig ist.",
+    "es": "Escanee desde Gladys con scanservjs: botón o escena, y un evento cuando el archivo está listo."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-scanservjs:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-scanservjs/main/cover.png",
+  "categories": ["services", "appliances"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your scanservjs",
+        "fr": "Votre scanservjs",
+        "de": "Dein scanservjs",
+        "es": "Su scanservjs"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "scanservjs, the web interface that scans with SANE. Enter its address, and a user and password if its basic authentication is on. Then add the scanners from the Discover tab.",
+        "fr": "scanservjs, l'interface web qui numérise avec SANE. Saisissez son adresse, et un utilisateur et un mot de passe si son authentification est activée. Ajoutez ensuite les scanners depuis l'onglet Découverte.",
+        "de": "scanservjs, die Weboberfläche, die mit SANE scannt. Gib seine Adresse ein und, wenn seine Anmeldung aktiv ist, Benutzer und Passwort. Lege dann die Scanner im Tab „Entdecken“ an.",
+        "es": "scanservjs, la interfaz web que escanea con SANE. Introduzca su dirección y, si su autenticación está activada, un usuario y una contraseña. Después añada los escáneres desde la pestaña Descubrir."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://github.com/guim31/gladys-scanservjs/blob/main/docs/en.md",
+          "label": {
+            "en": "Setup guide",
+            "fr": "Guide d'installation",
+            "de": "Einrichtungsanleitung",
+            "es": "Guía de instalación"
+          }
+        },
+        {
+          "url": "https://github.com/sbs20/scanservjs",
+          "label": {
+            "en": "scanservjs documentation",
+            "fr": "Documentation de scanservjs",
+            "de": "scanservjs-Dokumentation",
+            "es": "Documentación de scanservjs"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "url",
+      "type": "string",
+      "label": {
+        "en": "scanservjs address",
+        "fr": "Adresse de scanservjs",
+        "de": "scanservjs-Adresse",
+        "es": "Dirección de scanservjs"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "description": {
+        "en": "The address of the web interface, port 8080 by default.",
+        "fr": "L'adresse de l'interface web, port 8080 par défaut.",
+        "de": "Die Adresse der Weboberfläche, standardmäßig Port 8080.",
+        "es": "La dirección de la interfaz web, puerto 8080 por defecto."
+      },
+      "placeholder": {
+        "en": "e.g. http://192.168.1.2:8080",
+        "fr": "ex. http://192.168.1.2:8080",
+        "de": "z. B. http://192.168.1.2:8080",
+        "es": "p. ej. http://192.168.1.2:8080"
+      },
+      "required": true
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "username",
+      "type": "string",
+      "label": {
+        "en": "Username",
+        "fr": "Nom d'utilisateur",
+        "de": "Benutzername",
+        "es": "Usuario"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "A user of config.local.js (users). Empty without authentication.",
+        "fr": "Un utilisateur de config.local.js (users). Vide sans authentification.",
+        "de": "Ein Benutzer aus config.local.js (users). Leer ohne Anmeldung.",
+        "es": "Un usuario de config.local.js (users). Vacío sin autenticación."
+      },
+      "required": false
     },
     {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
+      "key": "password",
+      "type": "secret",
+      "label": {
+        "en": "Password",
+        "fr": "Mot de passe",
+        "de": "Passwort",
+        "es": "Contraseña"
+      },
+      "description": {
+        "en": "The password of this user. Empty without authentication.",
+        "fr": "Le mot de passe de cet utilisateur. Vide sans authentification.",
+        "de": "Das Passwort dieses Benutzers. Leer ohne Anmeldung.",
+        "es": "La contraseña de este usuario. Vacía sin autenticación."
+      },
+      "required": false
+    },
+    {
+      "key": "preset_1",
+      "type": "section",
+      "label": {
+        "en": "Preset 1",
+        "fr": "Préréglage 1",
+        "de": "Voreinstellung 1",
+        "es": "Preajuste 1"
+      },
+      "description": {
+        "en": "A button of the widget and a choice of the scene action \"Scan\". Empty name: the preset is off.",
+        "fr": "Un bouton du widget et un choix de l'action de scène « Numériser ». Nom vide : le préréglage est désactivé.",
+        "de": "Ein Knopf des Widgets und eine Wahl der Szenenaktion „Scannen“. Leerer Name: Die Voreinstellung ist aus.",
+        "es": "Un botón del widget y una opción de la acción de escena «Escanear». Nombre vacío: el preajuste está desactivado."
+      }
+    },
+    {
+      "key": "preset_1_name",
+      "type": "string",
+      "label": {
+        "en": "Name (the button)",
+        "fr": "Nom (le bouton)",
+        "de": "Name (der Knopf)",
+        "es": "Nombre (el botón)"
+      },
       "required": false,
-      "default": "celsius",
+      "default": "Document"
+    },
+    {
+      "key": "preset_1_resolution",
+      "type": "select",
+      "label": {
+        "en": "Resolution",
+        "fr": "Résolution",
+        "de": "Auflösung",
+        "es": "Resolución"
+      },
+      "required": false,
+      "default": "300",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "75",
+          "label": {
+            "en": "75 dpi",
+            "fr": "75 dpi",
+            "de": "75 dpi",
+            "es": "75 ppp"
+          }
+        },
+        {
+          "value": "100",
+          "label": {
+            "en": "100 dpi",
+            "fr": "100 dpi",
+            "de": "100 dpi",
+            "es": "100 ppp"
+          }
+        },
+        {
+          "value": "150",
+          "label": {
+            "en": "150 dpi",
+            "fr": "150 dpi",
+            "de": "150 dpi",
+            "es": "150 ppp"
+          }
+        },
+        {
+          "value": "200",
+          "label": {
+            "en": "200 dpi",
+            "fr": "200 dpi",
+            "de": "200 dpi",
+            "es": "200 ppp"
+          }
+        },
+        {
+          "value": "300",
+          "label": {
+            "en": "300 dpi",
+            "fr": "300 dpi",
+            "de": "300 dpi",
+            "es": "300 ppp"
+          }
+        },
+        {
+          "value": "600",
+          "label": {
+            "en": "600 dpi",
+            "fr": "600 dpi",
+            "de": "600 dpi",
+            "es": "600 ppp"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
-      "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+      "key": "preset_1_mode",
+      "type": "select",
+      "label": {
+        "en": "Mode",
+        "fr": "Mode",
+        "de": "Modus",
+        "es": "Modo"
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "gray",
+      "options": [
+        {
+          "value": "color",
+          "label": {
+            "en": "Color",
+            "fr": "Couleur",
+            "de": "Farbe",
+            "es": "Color"
+          }
+        },
+        {
+          "value": "gray",
+          "label": {
+            "en": "Grayscale",
+            "fr": "Niveaux de gris",
+            "de": "Graustufen",
+            "es": "Escala de grises"
+          }
+        },
+        {
+          "value": "lineart",
+          "label": {
+            "en": "Black and white",
+            "fr": "Noir et blanc",
+            "de": "Schwarzweiß",
+            "es": "Blanco y negro"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_1_format",
+      "type": "select",
+      "label": {
+        "en": "Format",
+        "fr": "Format",
+        "de": "Format",
+        "es": "Formato"
+      },
+      "required": false,
+      "default": "pdf",
+      "options": [
+        {
+          "value": "pdf",
+          "label": {
+            "en": "PDF",
+            "fr": "PDF",
+            "de": "PDF",
+            "es": "PDF"
+          }
+        },
+        {
+          "value": "pdf_ocr",
+          "label": {
+            "en": "Searchable PDF (OCR)",
+            "fr": "PDF avec texte (OCR)",
+            "de": "Durchsuchbares PDF (OCR)",
+            "es": "PDF con texto (OCR)"
+          }
+        },
+        {
+          "value": "jpg",
+          "label": {
+            "en": "JPEG",
+            "fr": "JPEG",
+            "de": "JPEG",
+            "es": "JPEG"
+          }
+        },
+        {
+          "value": "png",
+          "label": {
+            "en": "PNG",
+            "fr": "PNG",
+            "de": "PNG",
+            "es": "PNG"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_1_source",
+      "type": "select",
+      "label": {
+        "en": "Source",
+        "fr": "Source",
+        "de": "Quelle",
+        "es": "Origen"
+      },
+      "required": false,
+      "default": "default",
+      "options": [
+        {
+          "value": "default",
+          "label": {
+            "en": "Scanner default",
+            "fr": "Par défaut du scanner",
+            "de": "Standard des Scanners",
+            "es": "Predeterminado del escáner"
+          }
+        },
+        {
+          "value": "flatbed",
+          "label": {
+            "en": "Flatbed",
+            "fr": "Vitre",
+            "de": "Flachbett",
+            "es": "Cristal"
+          }
+        },
+        {
+          "value": "adf",
+          "label": {
+            "en": "Document feeder (all sheets)",
+            "fr": "Chargeur (toutes les feuilles)",
+            "de": "Einzug (alle Blätter)",
+            "es": "Alimentador (todas las hojas)"
+          }
+        },
+        {
+          "value": "adf_duplex",
+          "label": {
+            "en": "Feeder, both sides",
+            "fr": "Chargeur recto verso",
+            "de": "Einzug, beidseitig",
+            "es": "Alimentador a doble cara"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_1_pipeline",
+      "type": "string",
+      "label": {
+        "en": "scanservjs pipeline (optional)",
+        "fr": "Pipeline scanservjs (facultatif)",
+        "de": "scanservjs-Pipeline (optional)",
+        "es": "Pipeline de scanservjs (opcional)"
+      },
+      "description": {
+        "en": "Its exact name, e.g. one of yours that sends to Paperless. Empty: the one of the format.",
+        "fr": "Son nom exact, par ex. l'un des vôtres qui envoie vers Paperless. Vide : celui du format.",
+        "de": "Der genaue Name, z. B. eine eigene Pipeline, die an Paperless sendet. Leer: die des Formats.",
+        "es": "Su nombre exacto, p. ej. uno suyo que envía a Paperless. Vacío: el del formato."
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "preset_2",
+      "type": "section",
+      "label": {
+        "en": "Preset 2",
+        "fr": "Préréglage 2",
+        "de": "Voreinstellung 2",
+        "es": "Preajuste 2"
+      }
+    },
+    {
+      "key": "preset_2_name",
+      "type": "string",
+      "label": {
+        "en": "Name (the button)",
+        "fr": "Nom (le bouton)",
+        "de": "Name (der Knopf)",
+        "es": "Nombre (el botón)"
+      },
+      "required": false,
+      "default": "Photo"
+    },
+    {
+      "key": "preset_2_resolution",
+      "type": "select",
+      "label": {
+        "en": "Resolution",
+        "fr": "Résolution",
+        "de": "Auflösung",
+        "es": "Resolución"
+      },
+      "required": false,
+      "default": "300",
+      "options": [
+        {
+          "value": "75",
+          "label": {
+            "en": "75 dpi",
+            "fr": "75 dpi",
+            "de": "75 dpi",
+            "es": "75 ppp"
+          }
+        },
+        {
+          "value": "100",
+          "label": {
+            "en": "100 dpi",
+            "fr": "100 dpi",
+            "de": "100 dpi",
+            "es": "100 ppp"
+          }
+        },
+        {
+          "value": "150",
+          "label": {
+            "en": "150 dpi",
+            "fr": "150 dpi",
+            "de": "150 dpi",
+            "es": "150 ppp"
+          }
+        },
+        {
+          "value": "200",
+          "label": {
+            "en": "200 dpi",
+            "fr": "200 dpi",
+            "de": "200 dpi",
+            "es": "200 ppp"
+          }
+        },
+        {
+          "value": "300",
+          "label": {
+            "en": "300 dpi",
+            "fr": "300 dpi",
+            "de": "300 dpi",
+            "es": "300 ppp"
+          }
+        },
+        {
+          "value": "600",
+          "label": {
+            "en": "600 dpi",
+            "fr": "600 dpi",
+            "de": "600 dpi",
+            "es": "600 ppp"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_2_mode",
+      "type": "select",
+      "label": {
+        "en": "Mode",
+        "fr": "Mode",
+        "de": "Modus",
+        "es": "Modo"
+      },
+      "required": false,
+      "default": "color",
+      "options": [
+        {
+          "value": "color",
+          "label": {
+            "en": "Color",
+            "fr": "Couleur",
+            "de": "Farbe",
+            "es": "Color"
+          }
+        },
+        {
+          "value": "gray",
+          "label": {
+            "en": "Grayscale",
+            "fr": "Niveaux de gris",
+            "de": "Graustufen",
+            "es": "Escala de grises"
+          }
+        },
+        {
+          "value": "lineart",
+          "label": {
+            "en": "Black and white",
+            "fr": "Noir et blanc",
+            "de": "Schwarzweiß",
+            "es": "Blanco y negro"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_2_format",
+      "type": "select",
+      "label": {
+        "en": "Format",
+        "fr": "Format",
+        "de": "Format",
+        "es": "Formato"
+      },
+      "required": false,
+      "default": "jpg",
+      "options": [
+        {
+          "value": "pdf",
+          "label": {
+            "en": "PDF",
+            "fr": "PDF",
+            "de": "PDF",
+            "es": "PDF"
+          }
+        },
+        {
+          "value": "pdf_ocr",
+          "label": {
+            "en": "Searchable PDF (OCR)",
+            "fr": "PDF avec texte (OCR)",
+            "de": "Durchsuchbares PDF (OCR)",
+            "es": "PDF con texto (OCR)"
+          }
+        },
+        {
+          "value": "jpg",
+          "label": {
+            "en": "JPEG",
+            "fr": "JPEG",
+            "de": "JPEG",
+            "es": "JPEG"
+          }
+        },
+        {
+          "value": "png",
+          "label": {
+            "en": "PNG",
+            "fr": "PNG",
+            "de": "PNG",
+            "es": "PNG"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_2_source",
+      "type": "select",
+      "label": {
+        "en": "Source",
+        "fr": "Source",
+        "de": "Quelle",
+        "es": "Origen"
+      },
+      "required": false,
+      "default": "default",
+      "options": [
+        {
+          "value": "default",
+          "label": {
+            "en": "Scanner default",
+            "fr": "Par défaut du scanner",
+            "de": "Standard des Scanners",
+            "es": "Predeterminado del escáner"
+          }
+        },
+        {
+          "value": "flatbed",
+          "label": {
+            "en": "Flatbed",
+            "fr": "Vitre",
+            "de": "Flachbett",
+            "es": "Cristal"
+          }
+        },
+        {
+          "value": "adf",
+          "label": {
+            "en": "Document feeder (all sheets)",
+            "fr": "Chargeur (toutes les feuilles)",
+            "de": "Einzug (alle Blätter)",
+            "es": "Alimentador (todas las hojas)"
+          }
+        },
+        {
+          "value": "adf_duplex",
+          "label": {
+            "en": "Feeder, both sides",
+            "fr": "Chargeur recto verso",
+            "de": "Einzug, beidseitig",
+            "es": "Alimentador a doble cara"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_2_pipeline",
+      "type": "string",
+      "label": {
+        "en": "scanservjs pipeline (optional)",
+        "fr": "Pipeline scanservjs (facultatif)",
+        "de": "scanservjs-Pipeline (optional)",
+        "es": "Pipeline de scanservjs (opcional)"
+      },
+      "description": {
+        "en": "Its exact name, e.g. one of yours that sends to Paperless. Empty: the one of the format.",
+        "fr": "Son nom exact, par ex. l'un des vôtres qui envoie vers Paperless. Vide : celui du format.",
+        "de": "Der genaue Name, z. B. eine eigene Pipeline, die an Paperless sendet. Leer: die des Formats.",
+        "es": "Su nombre exacto, p. ej. uno suyo que envía a Paperless. Vacío: el del formato."
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "preset_3",
+      "type": "section",
+      "label": {
+        "en": "Preset 3",
+        "fr": "Préréglage 3",
+        "de": "Voreinstellung 3",
+        "es": "Preajuste 3"
+      }
+    },
+    {
+      "key": "preset_3_name",
+      "type": "string",
+      "label": {
+        "en": "Name (the button)",
+        "fr": "Nom (le bouton)",
+        "de": "Name (der Knopf)",
+        "es": "Nombre (el botón)"
+      },
+      "required": false,
+      "default": "",
+      "placeholder": {
+        "en": "e.g. Feeder",
+        "fr": "ex. Chargeur",
+        "de": "z. B. Einzug",
+        "es": "p. ej. Alimentador"
+      }
+    },
+    {
+      "key": "preset_3_resolution",
+      "type": "select",
+      "label": {
+        "en": "Resolution",
+        "fr": "Résolution",
+        "de": "Auflösung",
+        "es": "Resolución"
+      },
+      "required": false,
+      "default": "150",
+      "options": [
+        {
+          "value": "75",
+          "label": {
+            "en": "75 dpi",
+            "fr": "75 dpi",
+            "de": "75 dpi",
+            "es": "75 ppp"
+          }
+        },
+        {
+          "value": "100",
+          "label": {
+            "en": "100 dpi",
+            "fr": "100 dpi",
+            "de": "100 dpi",
+            "es": "100 ppp"
+          }
+        },
+        {
+          "value": "150",
+          "label": {
+            "en": "150 dpi",
+            "fr": "150 dpi",
+            "de": "150 dpi",
+            "es": "150 ppp"
+          }
+        },
+        {
+          "value": "200",
+          "label": {
+            "en": "200 dpi",
+            "fr": "200 dpi",
+            "de": "200 dpi",
+            "es": "200 ppp"
+          }
+        },
+        {
+          "value": "300",
+          "label": {
+            "en": "300 dpi",
+            "fr": "300 dpi",
+            "de": "300 dpi",
+            "es": "300 ppp"
+          }
+        },
+        {
+          "value": "600",
+          "label": {
+            "en": "600 dpi",
+            "fr": "600 dpi",
+            "de": "600 dpi",
+            "es": "600 ppp"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_3_mode",
+      "type": "select",
+      "label": {
+        "en": "Mode",
+        "fr": "Mode",
+        "de": "Modus",
+        "es": "Modo"
+      },
+      "required": false,
+      "default": "gray",
+      "options": [
+        {
+          "value": "color",
+          "label": {
+            "en": "Color",
+            "fr": "Couleur",
+            "de": "Farbe",
+            "es": "Color"
+          }
+        },
+        {
+          "value": "gray",
+          "label": {
+            "en": "Grayscale",
+            "fr": "Niveaux de gris",
+            "de": "Graustufen",
+            "es": "Escala de grises"
+          }
+        },
+        {
+          "value": "lineart",
+          "label": {
+            "en": "Black and white",
+            "fr": "Noir et blanc",
+            "de": "Schwarzweiß",
+            "es": "Blanco y negro"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_3_format",
+      "type": "select",
+      "label": {
+        "en": "Format",
+        "fr": "Format",
+        "de": "Format",
+        "es": "Formato"
+      },
+      "required": false,
+      "default": "pdf",
+      "options": [
+        {
+          "value": "pdf",
+          "label": {
+            "en": "PDF",
+            "fr": "PDF",
+            "de": "PDF",
+            "es": "PDF"
+          }
+        },
+        {
+          "value": "pdf_ocr",
+          "label": {
+            "en": "Searchable PDF (OCR)",
+            "fr": "PDF avec texte (OCR)",
+            "de": "Durchsuchbares PDF (OCR)",
+            "es": "PDF con texto (OCR)"
+          }
+        },
+        {
+          "value": "jpg",
+          "label": {
+            "en": "JPEG",
+            "fr": "JPEG",
+            "de": "JPEG",
+            "es": "JPEG"
+          }
+        },
+        {
+          "value": "png",
+          "label": {
+            "en": "PNG",
+            "fr": "PNG",
+            "de": "PNG",
+            "es": "PNG"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_3_source",
+      "type": "select",
+      "label": {
+        "en": "Source",
+        "fr": "Source",
+        "de": "Quelle",
+        "es": "Origen"
+      },
+      "required": false,
+      "default": "adf",
+      "options": [
+        {
+          "value": "default",
+          "label": {
+            "en": "Scanner default",
+            "fr": "Par défaut du scanner",
+            "de": "Standard des Scanners",
+            "es": "Predeterminado del escáner"
+          }
+        },
+        {
+          "value": "flatbed",
+          "label": {
+            "en": "Flatbed",
+            "fr": "Vitre",
+            "de": "Flachbett",
+            "es": "Cristal"
+          }
+        },
+        {
+          "value": "adf",
+          "label": {
+            "en": "Document feeder (all sheets)",
+            "fr": "Chargeur (toutes les feuilles)",
+            "de": "Einzug (alle Blätter)",
+            "es": "Alimentador (todas las hojas)"
+          }
+        },
+        {
+          "value": "adf_duplex",
+          "label": {
+            "en": "Feeder, both sides",
+            "fr": "Chargeur recto verso",
+            "de": "Einzug, beidseitig",
+            "es": "Alimentador a doble cara"
+          }
+        }
+      ]
+    },
+    {
+      "key": "preset_3_pipeline",
+      "type": "string",
+      "label": {
+        "en": "scanservjs pipeline (optional)",
+        "fr": "Pipeline scanservjs (facultatif)",
+        "de": "scanservjs-Pipeline (optional)",
+        "es": "Pipeline de scanservjs (opcional)"
+      },
+      "description": {
+        "en": "Its exact name, e.g. one of yours that sends to Paperless. Empty: the one of the format.",
+        "fr": "Son nom exact, par ex. l'un des vôtres qui envoie vers Paperless. Vide : celui du format.",
+        "de": "Der genaue Name, z. B. eine eigene Pipeline, die an Paperless sendet. Leer: die des Formats.",
+        "es": "Su nombre exacto, p. ej. uno suyo que envía a Paperless. Vacío: el del formato."
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "options",
+      "type": "section",
+      "label": {
+        "en": "Options",
+        "fr": "Options",
+        "de": "Optionen",
+        "es": "Opciones"
+      }
+    },
+    {
+      "key": "poll_interval",
+      "type": "select",
+      "label": {
+        "en": "Refresh interval",
+        "fr": "Intervalle de rafraîchissement",
+        "de": "Aktualisierungsintervall",
+        "es": "Intervalo de actualización"
+      },
+      "description": {
+        "en": "How often the files of scanservjs are read: a scan of its web interface is seen within this delay.",
+        "fr": "À quelle fréquence les fichiers de scanservjs sont lus : un scan fait depuis son interface web est vu dans ce délai.",
+        "de": "Wie oft die Dateien von scanservjs gelesen werden: Ein Scan aus seiner Weboberfläche wird in dieser Zeit erkannt.",
+        "es": "Con qué frecuencia se leen los archivos de scanservjs: un escaneo de su interfaz web se detecta en este plazo."
+      },
+      "required": false,
+      "default": "60",
+      "options": [
+        {
+          "value": "30",
+          "label": {
+            "en": "30 seconds",
+            "fr": "30 secondes",
+            "de": "30 Sekunden",
+            "es": "30 segundos"
+          }
+        },
+        {
+          "value": "60",
+          "label": {
+            "en": "1 minute",
+            "fr": "1 minute",
+            "de": "1 Minute",
+            "es": "1 minuto"
+          }
+        },
+        {
+          "value": "300",
+          "label": {
+            "en": "5 minutes",
+            "fr": "5 minutes",
+            "de": "5 Minuten",
+            "es": "5 minutos"
+          }
+        }
+      ]
+    },
+    {
+      "key": "allow_delete",
+      "type": "boolean",
+      "label": {
+        "en": "Allow deleting files",
+        "fr": "Autoriser la suppression des fichiers",
+        "de": "Löschen von Dateien erlauben",
+        "es": "Permitir eliminar archivos"
+      },
+      "description": {
+        "en": "Lets the scene action \"Delete the last file\" delete the newest file of scanservjs.",
+        "fr": "Permet à l'action de scène « Supprimer le dernier fichier » de supprimer le fichier le plus récent de scanservjs.",
+        "de": "Erlaubt der Szenenaktion „Letzte Datei löschen“, die neueste Datei von scanservjs zu löschen.",
+        "es": "Permite que la acción de escena «Eliminar el último archivo» elimine el archivo más reciente de scanservjs."
+      },
+      "required": false,
+      "default": false
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the names",
+        "fr": "Langue des noms",
+        "de": "Sprache der Namen",
+        "es": "Idioma de los nombres"
+      },
+      "description": {
+        "en": "Language of the feature names (set when a device is added), of the states and of the scene messages.",
+        "fr": "Langue des noms des fonctionnalités (fixés à l'ajout d'un appareil), des états et des messages de scène.",
+        "de": "Sprache der Funktionsnamen (beim Anlegen eines Geräts festgelegt), der Zustände und der Szenen-Meldungen.",
+        "es": "Idioma de los nombres de las funciones (fijados al añadir un dispositivo), de los estados y de los mensajes de escena."
+      },
+      "required": false,
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
+      "timeout_seconds": 100
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "scan_completed",
+      "label": {
+        "en": "A scan is done",
+        "fr": "Un scan est terminé",
+        "de": "Ein Scan ist fertig",
+        "es": "Un escaneo ha terminado"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "A new file in scanservjs: a scan from Gladys, or from its web interface (seen at the next reading).",
+        "fr": "Un nouveau fichier dans scanservjs : un scan lancé depuis Gladys, ou depuis son interface web (vu à la lecture suivante).",
+        "de": "Eine neue Datei in scanservjs: ein Scan aus Gladys oder aus seiner Weboberfläche (bei der nächsten Abfrage erkannt).",
+        "es": "Un archivo nuevo en scanservjs: un escaneo desde Gladys o desde su interfaz web (detectado en la siguiente lectura)."
       },
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
+          "key": "origin",
+          "type": "multi_select",
+          "label": {
+            "en": "Started from (empty: any)",
+            "fr": "Lancé depuis (vide : tous)",
+            "de": "Gestartet aus (leer: alle)",
+            "es": "Iniciado desde (vacío: todos)"
+          },
+          "options": [
+            {
+              "value": "gladys",
+              "label": {
+                "en": "Gladys",
+                "fr": "Gladys",
+                "de": "Gladys",
+                "es": "Gladys"
+              }
+            },
+            {
+              "value": "scanservjs",
+              "label": {
+                "en": "scanservjs web interface",
+                "fr": "Interface web de scanservjs",
+                "de": "Weboberfläche von scanservjs",
+                "es": "Interfaz web de scanservjs"
+              }
+            }
+          ]
         },
         {
-          "key": "target",
+          "key": "format",
           "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
+          "label": {
+            "en": "File type (empty: any)",
+            "fr": "Type de fichier (vide : tous)",
+            "de": "Dateityp (leer: alle)",
+            "es": "Tipo de archivo (vacío: todos)"
+          },
           "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
+            {
+              "value": "pdf",
+              "label": {
+                "en": "PDF",
+                "fr": "PDF",
+                "de": "PDF",
+                "es": "PDF"
+              }
+            },
+            {
+              "value": "jpg",
+              "label": {
+                "en": "JPEG",
+                "fr": "JPEG",
+                "de": "JPEG",
+                "es": "JPEG"
+              }
+            },
+            {
+              "value": "png",
+              "label": {
+                "en": "PNG",
+                "fr": "PNG",
+                "de": "PNG",
+                "es": "PNG"
+              }
+            },
+            {
+              "value": "tif",
+              "label": {
+                "en": "TIFF",
+                "fr": "TIFF",
+                "de": "TIFF",
+                "es": "TIFF"
+              }
+            },
+            {
+              "value": "zip",
+              "label": {
+                "en": "ZIP (several images)",
+                "fr": "ZIP (plusieurs images)",
+                "de": "ZIP (mehrere Bilder)",
+                "es": "ZIP (varias imágenes)"
+              }
+            },
+            {
+              "value": "txt",
+              "label": {
+                "en": "Text (OCR)",
+                "fr": "Texte (OCR)",
+                "de": "Text (OCR)",
+                "es": "Texto (OCR)"
+              }
+            }
           ]
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "file",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "File",
+            "fr": "Fichier",
+            "de": "Datei",
+            "es": "Archivo"
+          }
+        },
+        {
+          "key": "pages",
+          "type": "number",
+          "label": {
+            "en": "Pages (0: unknown)",
+            "fr": "Pages (0 : inconnu)",
+            "de": "Seiten (0: unbekannt)",
+            "es": "Páginas (0: desconocido)"
+          }
+        },
+        {
+          "key": "format",
+          "type": "string",
+          "label": {
+            "en": "File type",
+            "fr": "Type de fichier",
+            "de": "Dateityp",
+            "es": "Tipo de archivo"
+          }
+        },
+        {
+          "key": "size_kb",
+          "type": "number",
+          "label": {
+            "en": "Size (KB)",
+            "fr": "Taille (Ko)",
+            "de": "Größe (KB)",
+            "es": "Tamaño (KB)"
+          }
+        },
+        {
+          "key": "pipeline",
+          "type": "string",
+          "label": {
+            "en": "Pipeline (from Gladys)",
+            "fr": "Pipeline (depuis Gladys)",
+            "de": "Pipeline (aus Gladys)",
+            "es": "Pipeline (desde Gladys)"
+          }
+        },
+        {
+          "key": "preset",
+          "type": "string",
+          "label": {
+            "en": "Preset (from Gladys)",
+            "fr": "Préréglage (depuis Gladys)",
+            "de": "Voreinstellung (aus Gladys)",
+            "es": "Preajuste (desde Gladys)"
+          }
+        },
+        {
+          "key": "scanner",
+          "type": "string",
+          "label": {
+            "en": "Scanner (from Gladys)",
+            "fr": "Scanner (depuis Gladys)",
+            "de": "Scanner (aus Gladys)",
+            "es": "Escáner (desde Gladys)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "scan_failed",
+      "label": {
+        "en": "A scan fails",
+        "fr": "Un scan échoue",
+        "de": "Ein Scan schlägt fehl",
+        "es": "Un escaneo falla"
+      },
+      "description": {
+        "en": "A scan started from Gladys fails: paper jam, empty feeder, scanner off…",
+        "fr": "Un scan lancé depuis Gladys échoue : bourrage, chargeur vide, scanner éteint…",
+        "de": "Ein aus Gladys gestarteter Scan schlägt fehl: Papierstau, leerer Einzug, Scanner aus…",
+        "es": "Un escaneo iniciado desde Gladys falla: atasco, alimentador vacío, escáner apagado…"
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "multi_select",
+          "source": "devices",
+          "label": {
+            "en": "Scanners (empty: any)",
+            "fr": "Scanners (vide : tous)",
+            "de": "Scanner (leer: alle)",
+            "es": "Escáneres (vacío: todos)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "scanner",
+          "type": "string",
+          "label": {
+            "en": "Scanner",
+            "fr": "Scanner",
+            "de": "Scanner",
+            "es": "Escáner"
+          }
+        },
+        {
+          "key": "preset",
+          "type": "string",
+          "label": {
+            "en": "Preset",
+            "fr": "Préréglage",
+            "de": "Voreinstellung",
+            "es": "Preajuste"
+          }
+        },
+        {
+          "key": "message",
+          "type": "string",
+          "label": {
+            "en": "Error",
+            "fr": "Erreur",
+            "de": "Fehler",
+            "es": "Error"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "start_scan",
+      "label": {
+        "en": "Scan",
+        "fr": "Numériser",
+        "de": "Scannen",
+        "es": "Escanear"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Scans with a preset of the configuration and waits for the file (100 seconds at most).",
+        "fr": "Numérise avec un préréglage de la configuration et attend le fichier (100 secondes au plus).",
+        "de": "Scannt mit einer Voreinstellung der Konfiguration und wartet auf die Datei (höchstens 100 Sekunden).",
+        "es": "Escanea con un preajuste de la configuración y espera el archivo (100 segundos como máximo)."
+      },
+      "timeout_seconds": 120,
       "fields": [
+        {
+          "key": "preset",
+          "type": "select",
+          "label": {
+            "en": "Preset",
+            "fr": "Préréglage",
+            "de": "Voreinstellung",
+            "es": "Preajuste"
+          },
+          "required": true,
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Preset 1",
+                "fr": "Préréglage 1",
+                "de": "Voreinstellung 1",
+                "es": "Preajuste 1"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Preset 2",
+                "fr": "Préréglage 2",
+                "de": "Voreinstellung 2",
+                "es": "Preajuste 2"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "Preset 3",
+                "fr": "Préréglage 3",
+                "de": "Voreinstellung 3",
+                "es": "Preajuste 3"
+              }
+            }
+          ]
+        },
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
+          "label": {
+            "en": "Scanner (empty: the first)",
+            "fr": "Scanner (vide : le premier)",
+            "de": "Scanner (leer: der erste)",
+            "es": "Escáner (vacío: el primero)"
+          }
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
+          "key": "done",
           "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "label": {
+            "en": "File ready",
+            "fr": "Fichier prêt",
+            "de": "Datei fertig",
+            "es": "Archivo listo"
+          }
+        },
+        {
+          "key": "file",
+          "type": "string",
+          "label": {
+            "en": "File",
+            "fr": "Fichier",
+            "de": "Datei",
+            "es": "Archivo"
+          }
+        },
+        {
+          "key": "pages",
+          "type": "number",
+          "label": {
+            "en": "Pages",
+            "fr": "Pages",
+            "de": "Seiten",
+            "es": "Páginas"
+          }
+        }
+      ]
+    },
+    {
+      "key": "delete_last_file",
+      "label": {
+        "en": "Delete the last file",
+        "fr": "Supprimer le dernier fichier",
+        "de": "Letzte Datei löschen",
+        "es": "Eliminar el último archivo"
+      },
+      "description": {
+        "en": "Deletes the newest file of scanservjs. Off unless allowed in the configuration.",
+        "fr": "Supprime le fichier le plus récent de scanservjs. Inactif sauf autorisation dans la configuration.",
+        "de": "Löscht die neueste Datei von scanservjs. Aus, außer in der Konfiguration erlaubt.",
+        "es": "Elimina el archivo más reciente de scanservjs. Inactivo salvo autorización en la configuración."
+      },
+      "timeout_seconds": 30,
+      "outputs": [
+        {
+          "key": "file",
+          "type": "string",
+          "label": {
+            "en": "File deleted",
+            "fr": "Fichier supprimé",
+            "de": "Gelöschte Datei",
+            "es": "Archivo eliminado"
+          }
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "scanservjs",
+      "label": {
+        "en": "Scanner",
+        "fr": "Scanner",
+        "de": "Scanner",
+        "es": "Escáner"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "One button per preset, the state of the scanner and the last files.",
+        "fr": "Un bouton par préréglage, l'état du scanner et les derniers fichiers.",
+        "de": "Ein Knopf pro Voreinstellung, der Zustand des Scanners und die letzten Dateien.",
+        "es": "Un botón por preajuste, el estado del escáner y los últimos archivos."
+      },
+      "icon": "printer",
+      "action_timeout_seconds": 30,
+      "settings": [
+        {
+          "key": "scanner",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Scanner (empty: the first)",
+            "fr": "Scanner (vide : le premier)",
+            "de": "Scanner (leer: der erste)",
+            "es": "Escáner (vacío: el primero)"
+          },
+          "description": {
+            "en": "Only the devices added to Gladys can be chosen.",
+            "fr": "Seuls les appareils ajoutés à Gladys peuvent être choisis.",
+            "de": "Nur die in Gladys angelegten Geräte sind wählbar.",
+            "es": "Solo se pueden elegir los dispositivos añadidos a Gladys."
+          },
+          "required": false
+        }
+      ]
     }
   ]
 }

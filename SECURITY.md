@@ -30,6 +30,14 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+The integration stores the address, the username and the password of
+scanservjs in the Gladys configuration (the password as a secret field), and
+in `/data` only the time of the newest file announced and the pages counted
+of the last files. It talks to scanservjs on your network only (HTTP Basic
+authentication when scanservjs has users, redirects not followed), and
+never logs the password. It can start scans and, when allowed in its
+configuration, delete the newest file of scanservjs.
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+and scanservjs, SANE and the scanners the integration talks to.
