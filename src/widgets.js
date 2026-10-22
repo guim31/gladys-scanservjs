@@ -80,7 +80,7 @@ async function get(hub, { settings, language = 'en' }) {
   const components = [];
   if (hub.files !== null) {
     const today = startOfDay(hub.now());
-    const pages = files[0] ? hub.saved.pages[files[0].name] : undefined;
+    const pages = files[0] ? hub.knownPages(files[0]) : null;
     components.push(
       {
         type: 'value',
@@ -120,7 +120,7 @@ async function get(hub, { settings, language = 'en' }) {
     });
   }
   for (const file of files.slice(0, MAX_FILES_SHOWN)) {
-    const pages = hub.saved.pages[file.name];
+    const pages = hub.knownPages(file);
     const time = formatTime(file.time, language);
     items.push({
       label: fit(file.name, 40),

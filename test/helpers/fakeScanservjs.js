@@ -109,6 +109,8 @@ export class FakeScanservjs {
         : Buffer.from('fake image');
     const time = this.now();
     const file = { name: this.nameFor(time, extension), time, content };
+    // Named after the second: a file of the same second is replaced.
+    this.files = this.files.filter((item) => item.name !== file.name);
     this.files.push(file);
     return json(200, { file: this.fileInfo(file) });
   }

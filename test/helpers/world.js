@@ -54,12 +54,14 @@ export async function createWorld({
   connect = true,
   dataDir = mkdtempSync(join(tmpdir(), 'gladys-scanservjs-')),
   timers = false,
+  timings,
 } = {}) {
   const gladys = createFakeGladys({ config, devices });
   const app = registerHandlers(gladys, {
     store: new Store(dataDir),
     request: scanservjs.request,
     timers,
+    timings,
     now: clock.now,
   });
   if (connect) {

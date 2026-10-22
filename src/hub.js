@@ -59,6 +59,9 @@ export const HUB_TIMINGS = {
   // An unchanged value is sent again this often: Gladys shows "no recent
   // value" after 48 hours.
   heartbeatMs: 12 * 3600_000,
+  // Between the end of a scan from Gladys and the next one: scanservjs names
+  // its files after the second, and replaces a file of the same name.
+  sameNameGuardMs: 1000,
 };
 
 // New files announced per reading, the newest: the others are only recorded
@@ -67,6 +70,13 @@ export const MAX_ANNOUNCED = 10;
 // Pages counted kept in /data, by file name.
 const MAX_PAGES_KEPT = 20;
 const MAX_TRANSPORTS_PER_REQUEST = 100;
+
+/**
+ * The key of a file in the pages counted: its name and its time. scanservjs
+ * names a file after the second it was made: a second scan within the same
+ * second replaces the first file, under the same name.
+ */
+const pagesKey = (file) => `${file.name}@${file.time}`;
 
 /** The error of a scan, in the language of the configuration. */
 export function scanErrorText(err, language) {
@@ -110,6 +120,8 @@ export class ScanservjsHub {
     this.polling = null;
     /** @type {{ scannerId: string, preset: object }|null} the scan from Gladys running */
     this.scanning = null;
+    // When the last scan from Gladys ended (sameNameGuardMs).
+    this.lastScanAt = -Infinity;
     /** @type {Set<string>} files of the scans from Gladys, announced by them */
     this.announced = new Set();
     /** @type {Map<string, string>} the last scan from Gladys failed, by scanner id */
@@ -266,10 +278,16 @@ export class ScanservjsHub {
     return { context, contextRead: context !== this.context, files, now };
   }
 
+  /** The pages counted of a file, null if not yet. */
+  knownPages(file) {
+    const known = this.saved.pages[pagesKey(file)];
+    return Number.isInteger(known) ? known : null;
+  }
+
   /** The pages of a file: counted once, kept in /data; 0 when unreadable. */
   async pagesOf(client, file) {
-    const known = this.saved.pages[file.name];
-    if (Number.isInteger(known)) {
+    const known = this.knownPages(file);
+    if (known !== null) {
       return known;
     }
     let pages = 0;
@@ -278,12 +296,12 @@ export class ScanservjsHub {
     } catch (err) {
       logger.debug(`Pages of ${file.name} unreadable: ${err.message}`);
     }
-    this.rememberPages(file.name, pages);
+    this.rememberPages(pagesKey(file), pages);
     return pages;
   }
 
-  rememberPages(name, pages) {
-    this.saved.pages[name] = pages;
+  rememberPages(key, pages) {
+    this.saved.pages[key] = pages;
     const names = Object.keys(this.saved.pages);
     for (const old of names.slice(0, Math.max(0, names.length - MAX_PAGES_KEPT))) {
       delete this.saved.pages[old];
@@ -360,7 +378,7 @@ export class ScanservjsHub {
       }
     }
     this.files = files;
-    if (files[0] && !Number.isInteger(this.saved.pages[files[0].name])) {
+    if (files[0] && this.knownPages(files[0]) === null) {
       await this.pagesOf(client, files[0]);
       dirty = true;
     }
@@ -505,7 +523,7 @@ export class ScanservjsHub {
       values.push(
         ...serverValues(this.gladys, {
           files: this.files,
-          pages: this.files[0] ? (this.saved.pages[this.files[0].name] ?? null) : null,
+          pages: this.files[0] ? this.knownPages(this.files[0]) : null,
           now: this.now(),
           language,
         }),
@@ -659,6 +677,12 @@ export class ScanservjsHub {
     }
     this.scanning = { scannerId: scanner.id, preset };
     logger.info(`Scan started from Gladys: "${preset.name}" on ${scanner.name}`);
+    const guard = this.lastScanAt + this.timings.sameNameGuardMs - this.now();
+    if (guard > 0) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, guard);
+      });
+    }
     await this.publishStates();
     this.gladys.requestWidgetRefresh(WIDGET_KEY);
     return { done: this.runScan(this.client, scanner, preset, request) };
@@ -677,6 +701,7 @@ export class ScanservjsHub {
     const language = this.config.language;
     try {
       const file = await client.scan(request);
+      this.lastScanAt = this.now();
       this.announced.add(file.name);
       const data = await this.fileData(client, file);
       this.scanErrors.delete(scanner.id);

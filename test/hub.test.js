@@ -212,6 +212,28 @@ test('one scan at a time; the scanner shows "Scanning" while it runs', async (t)
   assert.equal(scannerState(world, SCANNER_KEYS.STATE), 'Ready');
 });
 
+test('two scans within a second: the pages of each file, and the second waits', async (t) => {
+  const world = await createWorld({
+    config: { ...CONFIG, preset_3_name: 'Courrier' },
+    timings: { sameNameGuardMs: 50 },
+  });
+  t.after(() => world.app.stop());
+  world.clock.advance(MINUTE);
+  assert.equal((await scan(world, { preset: '3' })).data.outputs.pages, 10);
+  // 300 ms later, the same second for scanservjs: the same name, the first
+  // file replaced. The pages are the new file's, not the 10 of the old one.
+  world.clock.advance(300);
+  const second = await scan(world, { preset: '1' });
+  assert.equal(second.data.outputs.pages, 1);
+  assert.equal(world.scanservjs.files.length, 3);
+  const widget = await world.fake.widgetGet(WIDGET_KEY, { settings: {} });
+  assert.equal(widget.data.content.components[1].value, 1);
+  // Gladys waits for the next second (here 50 ms) before the next scan.
+  const started = Date.now();
+  assert.equal((await scan(world, { preset: '2' })).success, true);
+  assert.ok(Date.now() - started >= 45);
+});
+
 test('a long scan: the action answers "not done yet", the event comes at its end', async (t) => {
   const world = await createWorld();
   t.after(() => world.app.stop());
