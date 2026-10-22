@@ -23,6 +23,8 @@
 // Redirects are not followed: the password would go wherever they point.
 // -----------------------------------------------------------------------------
 
+import http from 'node:http';
+import https from 'node:https';
 import { pageCounterFor } from './pages.js';
 
 export const ERROR_KINDS = Object.freeze({
@@ -73,39 +75,76 @@ export const TIMEOUTS = {
 };
 
 /**
- * The one function that talks to the network (fetch). The client takes it as
- * a parameter: the tests replace it with an in-memory scanservjs
- * (test/helpers/fakeScanservjs.js). With `sink`, the body is handed over
- * chunk by chunk and not kept.
+ * The one function that talks to the network. node:http rather than fetch:
+ * the fetch of Node gives up after 300 seconds without response headers, and
+ * POST /api/v1/scan answers only at the end of the scan (a full feeder with
+ * OCR takes longer). The client takes it as a parameter: the tests replace it
+ * with an in-memory scanservjs (test/helpers/fakeScanservjs.js). With `sink`,
+ * the body of a 200 is handed over chunk by chunk and not kept.
  * @returns {Promise<{ status: number, body: string }>}
  */
-export async function httpRequest(
+export function httpRequest(
   url,
   { method = 'GET', headers = {}, body, timeoutMs, sink, maxBytes = MAX_BODY_BYTES } = {},
 ) {
-  const response = await fetch(url, {
-    method,
-    headers,
-    body,
-    redirect: 'manual',
-    signal: AbortSignal.timeout(timeoutMs ?? TIMEOUTS.default),
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const transport = target.protocol === 'https:' ? https : http;
+    const payload = body === undefined ? undefined : Buffer.from(body);
+    let settled = false;
+    const finish = (fn, value) => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        fn(value);
+      }
+    };
+    const fail = (code, message) => {
+      const err = new Error(message);
+      err.code = code;
+      return err;
+    };
+    const req = transport.request(
+      target,
+      {
+        method,
+        headers: payload ? { ...headers, 'content-length': payload.length } : headers,
+      },
+      (res) => {
+        // Counted while read: a chunked answer has no content-length.
+        const chunks = [];
+        let size = 0;
+        res.on('data', (chunk) => {
+          size += chunk.length;
+          if (size > maxBytes) {
+            // Rejected first, then cut without an error: destroy(err) would
+            // emit it on the socket, where nothing listens (a crash).
+            finish(reject, fail('ETOOLARGE', 'Response too large'));
+            req.destroy();
+            return;
+          }
+          if (sink && res.statusCode === 200) {
+            sink(chunk);
+          } else {
+            chunks.push(chunk);
+          }
+        });
+        res.on('end', () =>
+          finish(resolve, {
+            status: res.statusCode,
+            body: Buffer.concat(chunks).toString('utf8'),
+          }),
+        );
+        res.on('error', (err) => finish(reject, err));
+      },
+    );
+    const timer = setTimeout(() => {
+      finish(reject, fail('ETIMEDOUT', 'Timeout'));
+      req.destroy();
+    }, timeoutMs ?? TIMEOUTS.default);
+    req.on('error', (err) => finish(reject, err));
+    req.end(payload);
   });
-  // Counted while read: a chunked answer has no content-length.
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of response.body ?? []) {
-    size += chunk.length;
-    if (size > maxBytes) {
-      await response.body.cancel().catch(() => {});
-      throw new Error('Response too large');
-    }
-    if (sink && response.status === 200) {
-      sink(Buffer.from(chunk));
-    } else {
-      chunks.push(chunk);
-    }
-  }
-  return { status: response.status, body: Buffer.concat(chunks).toString('utf8') };
 }
 
 // --- Parsing ---------------------------------------------------------------------
@@ -236,7 +275,10 @@ export class ScanservjsClient {
       if (TLS_CODES.has(code)) {
         throw new ScanservjsError(ERROR_KINDS.TLS, `Certificate refused (${code})`);
       }
-      throw new ScanservjsError(ERROR_KINDS.UNREACHABLE, code ?? err.name ?? err.message);
+      if (code === 'ETOOLARGE') {
+        throw new ScanservjsError(ERROR_KINDS.HTTP, 'Response too large');
+      }
+      throw new ScanservjsError(ERROR_KINDS.UNREACHABLE, code ?? err.message);
     }
   }
 
@@ -258,7 +300,7 @@ export class ScanservjsClient {
     if (status < 200 || status >= 300) {
       const detail = errorMessage(response.body);
       throw new ScanservjsError(
-        status === 500 && detail ? ERROR_KINDS.SCAN : ERROR_KINDS.HTTP,
+        status === 500 && detail && options.scan ? ERROR_KINDS.SCAN : ERROR_KINDS.HTTP,
         `HTTP ${status}${detail ? `: ${detail}` : ''}`,
         { status, detail },
       );
@@ -309,6 +351,7 @@ export class ScanservjsClient {
     const data = await this.json('/api/v1/scan', {
       method: 'POST',
       body: request,
+      scan: true,
       timeoutMs: TIMEOUTS.scan,
     });
     const file = normalizeFile(data?.file);

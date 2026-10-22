@@ -1008,7 +1008,7 @@
         "de": "Verbindung testen",
         "es": "Probar la conexión"
       },
-      "timeout_seconds": 100
+      "timeout_seconds": 120
     }
   ],
   "scene_triggers": [
@@ -1405,7 +1405,7 @@
         "es": "Un botón por preajuste, el estado del escáner y los últimos archivos."
       },
       "icon": "printer",
-      "action_timeout_seconds": 30,
+      "action_timeout_seconds": 120,
       "settings": [
         {
           "key": "scanner",

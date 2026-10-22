@@ -234,6 +234,88 @@ test('two scans within a second: the pages of each file, and the second waits', 
   assert.ok(Date.now() - started >= 45);
 });
 
+test('an empty folder at first: its first file is news', async (t) => {
+  const clock = createClock();
+  const world = await createWorld({ clock, scanservjs: new FakeScanservjs({ now: clock.now }) });
+  t.after(() => world.app.stop());
+  world.clock.advance(MINUTE);
+  world.scanservjs.addFile('first.pdf');
+  await world.hub.pollNow();
+  assert.deepEqual(
+    events(world, TRIGGERS.COMPLETED).map((event) => event.data.file),
+    ['first.pdf'],
+  );
+});
+
+test('scanservjs lost during a scan: the scanner does not stay "Scanning"', async (t) => {
+  const world = await createWorld();
+  t.after(() => world.app.stop());
+  await createDevices(world);
+  world.scanservjs.holdScans = true;
+  const { done } = await world.hub.startScan({ preset: '1' });
+  assert.equal(scannerState(world, SCANNER_KEYS.SCANNING), 1);
+  world.scanservjs.down = true;
+  world.scanservjs.release();
+  await assert.rejects(done);
+  await settle();
+  assert.equal(scannerState(world, SCANNER_KEYS.SCANNING), 0);
+  assert.equal(scannerState(world, SCANNER_KEYS.STATE), 'Last scan failed');
+});
+
+test('a scene starting a scan on "A scan is done" is not refused as busy', async (t) => {
+  const world = await createWorld({ timings: { sameNameGuardMs: 0 } });
+  t.after(() => world.app.stop());
+  let next = null;
+  const fire = world.gladys.publishSceneEvent.bind(world.gladys);
+  world.gladys.publishSceneEvent = async (key, data) => {
+    await fire(key, data);
+    if (key === TRIGGERS.COMPLETED && !next) {
+      world.clock.advance(MINUTE);
+      next = world.hub.startScan({ preset: '2' });
+    }
+  };
+  await scan(world, { preset: '1' });
+  await (
+    await next
+  ).done;
+  assert.equal(events(world, TRIGGERS.COMPLETED).length, 2);
+});
+
+test('pages not readable for a while are counted again later', async (t) => {
+  const world = await createWorld();
+  t.after(() => world.app.stop());
+  const request = world.scanservjs.request;
+  let failing = true;
+  world.hub.client.request = async (url, options) => {
+    if (failing && url.endsWith('.pdf')) {
+      throw new Error('socket hang up');
+    }
+    return request(url, options);
+  };
+  world.clock.advance(MINUTE);
+  world.scanservjs.addFile('new.pdf');
+  await world.hub.pollNow();
+  assert.equal(events(world, TRIGGERS.COMPLETED)[0].data.pages, 0);
+  failing = false;
+  await world.hub.pollNow();
+  assert.equal(world.hub.knownPages(world.hub.files[0]), 1);
+});
+
+test('a scan that cannot start (scanservjs down) fires "A scan fails" too', async (t) => {
+  const world = await createWorld();
+  t.after(() => world.app.stop());
+  world.scanservjs.down = true;
+  await world.hub.pollNow();
+  const ack = await scan(world, { preset: '1' });
+  assert.equal(ack.success, false);
+  assert.deepEqual(events(world, TRIGGERS.FAILED).at(-1).data, {
+    device: '',
+    scanner: '',
+    preset: 'Document',
+    message: 'scanservjs does not answer',
+  });
+});
+
 test('a long scan: the action answers "not done yet", the event comes at its end', async (t) => {
   const world = await createWorld();
   t.after(() => world.app.stop());

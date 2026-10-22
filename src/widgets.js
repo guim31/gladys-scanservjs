@@ -156,8 +156,9 @@ async function action(hub, { actionKey: key, settings }) {
   const language = hub.config.language;
   const preset = hub.config.presets[Number(match[1]) - 1];
   const device = typeof settings?.scanner === 'string' ? settings.scanner : '';
+  const started = Date.now();
   const { done } = await hub.startScan({ preset: match[1], device });
-  const result = await within(done, WIDGET_WAIT_MS);
+  const result = await within(done, Math.max(0, WIDGET_WAIT_MS - (Date.now() - started)));
   const words = SCAN_TEXT[language] ?? SCAN_TEXT.en;
   return {
     message: fit(result ? words.done(result.file, result.pages) : words.running(preset.name), 200),

@@ -290,14 +290,15 @@ export class ScanservjsHub {
     if (known !== null) {
       return known;
     }
-    let pages = 0;
     try {
-      pages = await client.pages(file);
+      const pages = await client.pages(file);
+      this.rememberPages(pagesKey(file), pages);
+      return pages;
     } catch (err) {
+      // Not kept: counted again at the next reading.
       logger.debug(`Pages of ${file.name} unreadable: ${err.message}`);
+      return 0;
     }
-    this.rememberPages(pagesKey(file), pages);
-    return pages;
   }
 
   rememberPages(key, pages) {
@@ -323,8 +324,9 @@ export class ScanservjsHub {
 
   /** Record `files` (newest first) as seen. */
   recordNewest(files) {
-    const time = files[0]?.time;
-    if (time === undefined || (this.saved.newest && this.saved.newest.time >= time)) {
+    // An empty folder is seen too: its first file is news.
+    const time = files[0]?.time ?? 0;
+    if (this.saved.newest && this.saved.newest.time >= time) {
       return false;
     }
     this.saved.newest = { time };
@@ -370,6 +372,9 @@ export class ScanservjsHub {
       if (fresh !== null && fresh.length > 0) {
         logger.debug(`${fresh.length} new file(s) in scanservjs`);
       }
+      if (client !== this.client) {
+        return false; // reconfigured meanwhile: these files are another instance's
+      }
       dirty = this.recordNewest(files) || dirty;
       // Recorded now: a file of Gladys not in this list (read before its scan
       // ended) stays to be skipped by the next read.
@@ -380,7 +385,7 @@ export class ScanservjsHub {
     this.files = files;
     if (files[0] && this.knownPages(files[0]) === null) {
       await this.pagesOf(client, files[0]);
-      dirty = true;
+      dirty = this.knownPages(files[0]) !== null || dirty;
     }
     if (files[0]?.name !== previousNewest) {
       widgetChanged = true;
@@ -499,7 +504,9 @@ export class ScanservjsHub {
    * has (and sends an unchanged one again after `heartbeatMs`).
    */
   async publishStates() {
-    if (!this.context || this.files === null || this.error) {
+    // While scanservjs does not answer, the scanners are still published: a
+    // scan from Gladys that failed must not stay "Scanning".
+    if (!this.context || this.files === null) {
       return;
     }
     const language = this.config.language;
@@ -514,12 +521,12 @@ export class ScanservjsHub {
     }
     // A scanner scanservjs no longer lists (removed from its config, unplugged
     // when its device list was read again).
-    for (const externalId of this.createdScanners()) {
+    for (const externalId of this.error ? [] : this.createdScanners()) {
       if (!seen.has(externalId)) {
         values.push(...scannerValues(externalId, 'missing', language));
       }
     }
-    if (this.isCreated(serverIds(this.gladys).device)) {
+    if (!this.error && this.isCreated(serverIds(this.gladys).device)) {
       values.push(
         ...serverValues(this.gladys, {
           files: this.files,
@@ -662,8 +669,20 @@ export class ScanservjsHub {
     if (this.scanning) {
       throw new Error(pick(ACTION_TEXT.busy, language));
     }
-    await this.ensureRead();
-    const scanner = this.scannerFor(device);
+    let scanner;
+    try {
+      await this.ensureRead();
+      scanner = this.scannerFor(device);
+    } catch (err) {
+      // scanservjs down, no scanner: the scan fails before it starts.
+      await this.fire(TRIGGERS.FAILED, {
+        device: typeof device === 'string' ? device : '',
+        scanner: '',
+        preset: preset.name,
+        message: err.message,
+      });
+      throw err;
+    }
     if (this.scanning) {
       throw new Error(pick(ACTION_TEXT.busy, language)); // started while reading
     }
@@ -697,6 +716,12 @@ export class ScanservjsHub {
     };
   }
 
+  release(scanner) {
+    if (this.scanning?.scannerId === scanner.id) {
+      this.scanning = null;
+    }
+  }
+
   async runScan(client, scanner, preset, request) {
     const language = this.config.language;
     try {
@@ -705,6 +730,8 @@ export class ScanservjsHub {
       this.announced.add(file.name);
       const data = await this.fileData(client, file);
       this.scanErrors.delete(scanner.id);
+      // Free before the event: a scene may start the next scan on it.
+      this.release(scanner);
       logger.info(`Scan done: ${file.name} (${data.pages} page(s))`);
       await this.fire(TRIGGERS.COMPLETED, {
         ...data,
@@ -717,13 +744,13 @@ export class ScanservjsHub {
     } catch (err) {
       const message = scanErrorText(err, language);
       this.scanErrors.set(scanner.id, message);
+      this.release(scanner);
       logger.warn(`Scan "${preset.name}" on ${scanner.name} failed: ${err.message}`);
       await this.fire(TRIGGERS.FAILED, this.failureData(scanner, preset, message));
       throw new Error(labelled(preset.name, message, language), { cause: err });
     } finally {
-      if (this.scanning?.scannerId === scanner.id) {
-        this.scanning = null;
-      }
+      this.release(scanner);
+      await this.publishStates();
       // The file in the device states, the scanner ready again; after a
       // failure, the scanners read again (one unplugged?).
       // A read already running may predate the file: wait for it, then read.

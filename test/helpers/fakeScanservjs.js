@@ -77,6 +77,12 @@ export class FakeScanservjs {
     if (this.holdScans) {
       await new Promise((resolve) => this.held.push(resolve));
     }
+    if (this.down) {
+      // scanservjs restarted during the scan: the connection is cut.
+      const err = new Error('socket hang up');
+      err.code = 'ECONNRESET';
+      throw err;
+    }
     if (this.scanFailure) {
       const message = this.scanFailure;
       this.scanFailure = null;

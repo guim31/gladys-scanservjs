@@ -115,3 +115,45 @@ test('basic authentication, file names with spaces, deletion', async () => {
   ]);
   assert.equal(await client.pages({ name: 'a.jpg', extension: 'jpg', size: 1 }), 1);
 });
+
+test('httpRequest on a real HTTP server: body, sink, size limit, timeout, no redirect', async (t) => {
+  const { createServer } = await import('node:http');
+  const { httpRequest } = await import('../src/scanservjs/client.js');
+  const server = createServer((req, res) => {
+    if (req.url === '/slow') {
+      setTimeout(() => res.end('late'), 500);
+      return;
+    }
+    if (req.url === '/moved') {
+      res.writeHead(302, { location: 'http://192.0.2.1/' }).end();
+      return;
+    }
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () =>
+      res.end(JSON.stringify({ method: req.method, body, auth: req.headers.authorization })),
+    );
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const answer = await httpRequest(`${base}/x`, {
+    method: 'POST',
+    headers: { authorization: 'Basic eA==' },
+    body: '{"a":1}',
+  });
+  assert.deepEqual(JSON.parse(answer.body), {
+    method: 'POST',
+    body: '{"a":1}',
+    auth: 'Basic eA==',
+  });
+  const chunks = [];
+  const sunk = await httpRequest(`${base}/x`, { sink: (chunk) => chunks.push(chunk) });
+  assert.equal(sunk.body, '');
+  assert.match(Buffer.concat(chunks).toString(), /GET/);
+  await assert.rejects(httpRequest(`${base}/x`, { maxBytes: 5 }), { code: 'ETOOLARGE' });
+  await assert.rejects(httpRequest(`${base}/slow`, { timeoutMs: 50 }), { code: 'ETIMEDOUT' });
+  assert.equal((await httpRequest(`${base}/moved`)).status, 302);
+});

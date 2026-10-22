@@ -267,3 +267,11 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
   (1.17, 2.34…) : ne garder que les entières.
 - Les noms de pipelines contiennent des clés i18n de l'interface (`@:pipeline.high-quality`) :
   `pipelineLabel` les rend lisibles pour les variables de scène.
+- **Pas de `fetch` pour `POST /api/v1/scan`** : le `fetch` de Node (undici) abandonne après 300 s sans
+  en-têtes de réponse (`UND_ERR_HEADERS_TIMEOUT`), quel que soit l'`AbortSignal`, et scanservjs ne
+  répond qu'à la fin du scan. `httpRequest` passe donc par `node:http`/`node:https`. Y couper une
+  requête par `req.destroy(err)` émet l'erreur sur la socket, où rien n'écoute : plantage du
+  conteneur. Rejeter d'abord, puis `req.destroy()` sans argument.
+- scanservjs nomme ses fichiers **à la seconde** et remplace un fichier du même nom : deux scans dans
+  la même seconde écrasent le premier. Gladys attend la seconde suivante entre deux scans, et les
+  pages comptées sont indexées par nom **et** heure.
