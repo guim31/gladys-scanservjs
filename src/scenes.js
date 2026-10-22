@@ -1,41 +1,47 @@
 // -----------------------------------------------------------------------------
-// Scene actions (SDK v0.14+, Gladys 5.1+).
+// Scene action handlers (manifest `scene_actions`, Gladys 5.1+).
 //
-// A scene action is an OPERATION a scene author places in a scene, with
-// parameters and a result: "identify this device", "take a snapshot", "clean
-// these rooms". Each one is declared in the manifest `scene_actions` field
-// (key, label, `fields` in the config_schema grammar, scalar `outputs`) and
-// handled here, keyed by that same `key`; index.js registers every entry with
-// `gladys.onSceneAction(key, ...)`.
+// "Scan" starts a preset of the configuration and waits for the file, up to
+// 100 seconds from its start (the action has 120): its outputs then name the file and its
+// pages for the next actions ("send me a message"). A longer scan (a full
+// document feeder) goes on: `done` is false, and "A scan is done" fires at its
+// end.
 //
-// Scene TRIGGERS are the other direction ("this happened"): they are fired by
-// the device that observes the event, see src/devices/motionSensor.js.
-//
-// The rules that matter:
-//   - `fields` arrive RESOLVED: scene variables substituted, defaults applied,
-//     validated by the core; a `"source": "devices"` field is the chosen
-//     device external_id;
-//   - resolve an object of the declared `outputs` (scalars only), readable by
-//     the following actions of the scene, or `undefined` for none. Keys not
-//     declared in the manifest are dropped by the core;
-//   - throwing fails THIS action only: the scene logs it and continues. A
-//     scene action is never a condition: return an output and let the scene
-//     author gate on it;
-//   - never fire a scene event as a consequence of a received action: a scene
-//     bound to that event would loop through the integration.
+// "Delete the last file" is off by default (configuration): a scene, a voice
+// assistant or another user of Gladys then cannot delete a document.
 // -----------------------------------------------------------------------------
 
-import { createLogger } from '@gladysassistant/integration-sdk';
-import { signalDevice } from './devices/index.js';
+export const SCAN_WAIT_MS = 100_000;
 
-const logger = createLogger({ name: 'scenes' });
+/**
+ * The outcome of `promise` within `ms`: its value, or `null` when it is still
+ * running (it goes on; its rejection is then the hub's business, not ours).
+ */
+export async function within(promise, ms) {
+  let timer;
+  const late = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  promise.catch(() => {});
+  try {
+    return await Promise.race([promise, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export const SCENE_ACTIONS = {
-  // The ack is awaited under the action's `timeout_seconds` (15 s in the
-  // manifest), counted from the moment the scene reaches the action.
-  async identify_device(gladys, { fields, config }) {
-    logger.info(`Scene action identify_device <- ${fields.device}`);
-    const signalled = await signalDevice(gladys, fields.device, config);
-    return { signalled };
+  async start_scan(hub, { fields = {} }, { waitMs = SCAN_WAIT_MS } = {}) {
+    // The wait counts from the action: reading scanservjs first takes some.
+    const started = Date.now();
+    const { done } = await hub.startScan({ preset: fields.preset, device: fields.device });
+    const result = await within(done, Math.max(0, waitMs - (Date.now() - started)));
+    return result
+      ? { done: true, file: result.file, pages: result.pages }
+      : { done: false, file: '', pages: 0 };
+  },
+
+  async delete_last_file(hub) {
+    return { file: await hub.deleteLastFile() };
   },
 };

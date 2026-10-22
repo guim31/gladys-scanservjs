@@ -1,0 +1,178 @@
+# scanservjs
+
+[scanservjs](https://github.com/sbs20/scanservjs) es una interfaz web que
+escanea con SANE desde cualquier dispositivo de su red. Esta integración
+permite a Gladys iniciar un escaneo, con un toque en el panel o desde una
+escena, y avisa cuando un archivo está listo: desde Gladys o desde la interfaz
+web de scanservjs. Adónde va luego el archivo (una carpeta compartida,
+Paperless-ngx…) es cosa de scanservjs y de sus pipelines.
+
+Probada con un scanservjs 3.3 real (imagen Docker `sbs20/scanservjs`) que
+controla el escáner virtual de SANE (su backend `test`): escaneos del cristal
+y del alimentador de documentos (10 páginas), en PDF, JPEG y PNG, ajustes
+rechazados, un archivo eliminado, con y sin autenticación. Desarrollada sin el
+hardware (ningún escáner físico) y aún sin probar en un Gladys real: sus
+comentarios son bienvenidos en
+[las issues](https://github.com/guim31/gladys-scanservjs/issues).
+
+## Lo que necesita
+
+- Gladys Assistant 5.1.0 o posterior.
+- scanservjs 3.x (probado con 3.3.0), su interfaz web accesible desde la
+  máquina de Gladys (puerto 8080 por defecto), y un escáner que vea.
+- Si declaró usuarios en su `config.local.js`: uno de ellos y su contraseña.
+
+La integración lee la lista de archivos de scanservjs cada minuto por defecto,
+y sus escáneres una vez por hora. Nada sale de su red.
+
+## Puesta en marcha
+
+### 1. Comprobar la dirección de scanservjs
+
+Abra scanservjs en un navegador y anote su dirección, por ejemplo
+`http://192.168.1.2:8080`. Haga un primer escaneo desde su interfaz web: si
+funciona allí, funcionará desde Gladys.
+
+### 2. Configurar la integración
+
+En **Integraciones → scanservjs → Configuración**:
+
+- **Dirección de scanservjs**: la dirección anterior. Una dirección IP sola
+  usa el puerto 8080.
+- **Usuario** y **Contraseña**: solo si scanservjs los pide.
+- **Preajuste 1, 2 y 3**: lo que hace un toque. Cada preajuste tiene un
+  **Nombre** (el texto de su botón; vacío, el preajuste está desactivado), una
+  **Resolución**, un **Modo** (color, escala de grises, blanco y negro), un
+  **Formato** (PDF, PDF con texto por OCR, JPEG, PNG) y un **Origen**: el
+  predeterminado del escáner, el cristal o el alimentador de documentos, que
+  escanea todas las hojas que contiene (un solo archivo). Por defecto:
+  _Document_ (300 ppp, escala de grises, PDF) y _Photo_ (300 ppp, color,
+  JPEG). La integración encuentra las palabras de su escáner (un modo «Color»
+  puede llamarse «24bit Color»); un blanco y negro que no tenga pasa a escala
+  de grises.
+- **Pipeline de scanservjs (opcional)**: el nombre exacto de un pipeline de
+  scanservjs, uno suyo por ejemplo (vea _Paperless y carpetas compartidas_).
+  Vacío, la integración toma el del formato.
+- **Intervalo de actualización**: en cuánto tiempo se detecta un escaneo hecho
+  desde la interfaz web de scanservjs (30 segundos, 1 o 5 minutos). Un escaneo
+  iniciado desde Gladys se detecta enseguida.
+- **Permitir eliminar archivos**: desactivado por defecto; vea la acción más
+  abajo.
+- **Idioma de los nombres**: el idioma de los nombres de las funciones
+  (fijados al añadir un dispositivo) y de los estados.
+
+**Probar la conexión** lee scanservjs e indica su versión, sus escáneres y sus
+archivos.
+
+### 3. Añadir los dispositivos
+
+En la pestaña **Descubrir**, añada los escáneres y el dispositivo
+**scanservjs**. No se crea nada sin usted. El widget y las escenas funcionan
+sin ellos, pero una escena solo puede elegir un escáner añadido.
+
+## Los dispositivos
+
+Un dispositivo por escáner de scanservjs:
+
+| Función          | Valor                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Estado           | Listo, Escaneando, Último escaneo fallido (hasta el siguiente correcto), No encontrado (scanservjs ya no lo lista) |
+| Escaneo en curso | 1 mientras dura un escaneo iniciado desde Gladys                                                                   |
+
+Un dispositivo **scanservjs** para los archivos de su carpeta de salida:
+
+| Función                    | Valor                                                        |
+| -------------------------- | ------------------------------------------------------------ |
+| Último escaneo             | Día y hora del archivo más reciente                          |
+| Último archivo             | Su nombre                                                    |
+| Páginas del último escaneo | Contadas en el PDF (o el ZIP de imágenes); 0 si se desconoce |
+| Escaneos de hoy            | Archivos creados desde medianoche                            |
+| Archivos                   | Archivos de la carpeta                                       |
+
+Los archivos no están en los escáneres: scanservjs no anota qué escáner creó un
+archivo.
+
+## Panel
+
+El widget **Escáner** muestra los escaneos del día, las páginas del último
+escaneo, el estado del escáner, los cinco últimos archivos y un botón por
+preajuste (_Document_, _Photo_…). Un toque escanea: el nombre del archivo y sus
+páginas aparecen en 20 segundos como máximo, o el widget indica que el escaneo
+continúa y se actualiza al terminar. En sus ajustes, elija el escáner (vacío:
+el primero).
+
+## Escenas
+
+### Desencadenantes
+
+- **Un escaneo ha terminado**: un archivo nuevo en scanservjs, iniciado desde
+  Gladys o desde su interfaz web. Filtros: iniciado desde (Gladys, la interfaz
+  web) y tipo de archivo. Variables: el archivo, sus páginas, su tipo, su
+  tamaño y, para un escaneo iniciado desde Gladys, su preajuste, su pipeline y
+  su escáner.
+- **Un escaneo falla**: un escaneo iniciado desde Gladys falla (atasco,
+  alimentador vacío, escáner apagado, ajuste rechazado). Filtro: los
+  escáneres. Variables: el escáner, el preajuste y el error de scanservjs.
+
+### Acciones
+
+- **Escanear**: escanea con un preajuste (y un escáner; vacío, el primero) y
+  espera el archivo, 100 segundos como máximo. Sus resultados: si el archivo
+  está listo, su nombre y sus páginas. Un escaneo más largo continúa, y **Un
+  escaneo ha terminado** se activa al terminar.
+- **Eliminar el último archivo**: elimina el archivo más reciente de
+  scanservjs, por ejemplo un escaneo fallido. Inactivo salvo que **Permitir
+  eliminar archivos** esté activado. Su resultado: el nombre del archivo
+  eliminado.
+
+### Ideas de escenas
+
+- Un botón de la entrada (interruptor Zigbee) → **Escanear** con el preajuste
+  _Document_: la carta en el cristal, un toque, y está en Paperless.
+- **Un escaneo ha terminado** → enviar un mensaje «Escaneado: archivo
+  (páginas)» con las variables del desencadenante.
+- **Un escaneo falla** → avisar con el error: el alimentador estaba vacío.
+
+## Paperless y carpetas compartidas
+
+La integración inicia los escaneos; scanservjs crea y envía los archivos. Para
+que lleguen a Paperless-ngx, haga que la carpeta de salida de scanservjs
+(`/var/lib/scanservjs/output` en su contenedor) apunte a la carpeta de consumo
+de Paperless, o declare en su `config.local.js` un pipeline cuyo `afterAction`
+mueva allí el archivo (vea la documentación de scanservjs,
+«config.local.js»), y escriba su nombre en **Pipeline de scanservjs** de un
+preajuste.
+
+## Solución de problemas
+
+- **«scanservjs no responde»**: compruebe la dirección y el puerto desde la
+  máquina de Gladys.
+- **«usuario o contraseña ausentes o rechazados por scanservjs»**: scanservjs
+  tiene usuarios en su `config.local.js`: introduzca uno de ellos y su
+  contraseña.
+- **«no hay ningún scanservjs en esta dirección»**: la dirección apunta a otra
+  cosa.
+- **«scanservjs no ve ningún escáner»**: compruebe el escáner en su interfaz
+  web y luego **Buscar** en la pestaña Descubrir (los escáneres se leen de
+  nuevo).
+- **«este escáner no tiene alimentador de documentos»**: el preajuste pide el
+  alimentador; elija el cristal o el origen predeterminado del escáner.
+- **Un escaneo falla con el error de `scanimage`**: el mismo escaneo
+  seguramente falla desde la interfaz web de scanservjs; sus registros dicen
+  más.
+- Para ver más, ponga la variable `LOG_LEVEL` de la integración en `debug`.
+
+## Límites
+
+- Una instancia de scanservjs por integración, un escaneo desde Gladys a la
+  vez. scanservjs no impide que un escaneo de su interfaz web se ejecute al
+  mismo tiempo que uno de Gladys: evítelo.
+- Un escaneo iniciado desde la interfaz web se detecta cuando aparece su
+  archivo, en la siguiente lectura: su fallo, su preajuste y su escáner no se
+  conocen.
+- Las páginas se cuentan en los archivos PDF y los archivos ZIP; un archivo de
+  texto del OCR cuenta como una página.
+- Desarrollada sin el hardware: sus comentarios son bienvenidos (solo un
+  escáner virtual de SANE). Sin relación con scanservjs ni SANE. Informe de un
+  problema o una idea en
+  [las issues](https://github.com/guim31/gladys-scanservjs/issues).

@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
+  "name": "gladys-scanservjs",
   "version": "1.0.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "Gladys Assistant integration for scanservjs: scan from a dashboard button or a scene, events when a file is ready.",
   "type": "module",
   "main": "index.js",
   "scripts": {
