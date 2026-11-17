@@ -8,8 +8,8 @@
     "de": "Scanne aus Gladys mit scanservjs: per Knopf oder Szene, und ein Ereignis, wenn die Datei fertig ist.",
     "es": "Escanee desde Gladys con scanservjs: botón o escena, y un evento cuando el archivo está listo."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/guim31/gladys-scanservjs:1.0.0",
+  "version": "1.0.1",
+  "docker_image": "ghcr.io/guim31/gladys-scanservjs:1.0.1",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-scanservjs/main/cover.png",
   "categories": ["services", "appliances"],

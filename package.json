@@ -1,6 +1,6 @@
 {
   "name": "gladys-scanservjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Gladys Assistant integration for scanservjs: scan from a dashboard button or a scene, events when a file is ready.",
   "type": "module",
